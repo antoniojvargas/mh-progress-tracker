@@ -10,6 +10,7 @@ export const createSocketGateway = (server: HttpServer): Server => {
   io.use((socket, next) => {
     try {
       const token = cookie.parse(socket.handshake.headers.cookie ?? '').session;
+      if (!token) throw new Error('Missing session cookie');
       const payload = jwt.verify(token, env.jwtSecret) as { sub: string };
       socket.data.userId = payload.sub;
       next();
@@ -18,4 +19,3 @@ export const createSocketGateway = (server: HttpServer): Server => {
   io.on('connection', (socket) => socket.join(`user:${socket.data.userId}`));
   return io;
 };
-

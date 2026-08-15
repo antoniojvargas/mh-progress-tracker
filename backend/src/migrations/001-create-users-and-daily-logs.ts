@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateUsersAndDailyLogs001 implements MigrationInterface {
-  name = 'CreateUsersAndDailyLogs001';
+export class CreateUsersAndDailyLogs1723658400000 implements MigrationInterface {
+  name = 'CreateUsersAndDailyLogs1723658400000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
@@ -36,4 +36,3 @@ export class CreateUsersAndDailyLogs001 implements MigrationInterface {
     await queryRunner.query('DROP TYPE "social_interaction_frequency_enum"');
   }
 }
-

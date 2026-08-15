@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "lint": "eslint src",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/config/data-source.ts",
@@ -23,12 +24,15 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.2",
+    "eslint": "^10.8.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.67.0"
   }
 }

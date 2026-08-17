@@ -3,6 +3,7 @@ import cookie from 'cookie';
 import jwt from 'jsonwebtoken';
 import { Server } from 'socket.io';
 import { env } from '../config/env';
+import { logger } from '../config/logger';
 
 export let io: Server;
 export const createSocketGateway = (server: HttpServer): Server => {
@@ -14,8 +15,15 @@ export const createSocketGateway = (server: HttpServer): Server => {
       const payload = jwt.verify(token, env.jwtSecret) as { sub: string };
       socket.data.userId = payload.sub;
       next();
-    } catch { next(new Error('Authentication required')); }
+    } catch (error) {
+      logger.warn('Rejected socket connection', { error });
+      next(new Error('Authentication required'));
+    }
   });
-  io.on('connection', (socket) => socket.join(`user:${socket.data.userId}`));
+  io.on('connection', (socket) => {
+    socket.join(`user:${socket.data.userId}`);
+    logger.info('Socket connected', { userId: socket.data.userId });
+    socket.on('disconnect', (reason) => logger.info('Socket disconnected', { userId: socket.data.userId, reason }));
+  });
   return io;
 };

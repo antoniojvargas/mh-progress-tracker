@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { logger } from '../config/logger';
 import { User } from '../entities/user.entity';
 import { findUserByGoogleId, saveUser } from '../repositories/user.repository';
 
@@ -10,13 +11,14 @@ export const getGoogleAuthorizationUrl = (state: string): string => {
 };
 export const authenticateGoogleCode = async (code: string): Promise<User> => {
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ code, client_id: env.googleClientId, client_secret: env.googleClientSecret, redirect_uri: env.googleCallbackUrl, grant_type: 'authorization_code' }) });
-  if (!tokenResponse.ok) throw new Error('Google token exchange failed');
+  if (!tokenResponse.ok) { logger.warn('Google token exchange failed', { status: tokenResponse.status }); throw new Error('Google token exchange failed'); }
   const { access_token: accessToken } = await tokenResponse.json() as { access_token: string };
   const profileResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!profileResponse.ok) throw new Error('Google profile request failed');
+  if (!profileResponse.ok) { logger.warn('Google profile request failed', { status: profileResponse.status }); throw new Error('Google profile request failed'); }
   const profile = await profileResponse.json() as GoogleProfile;
   const existing = await findUserByGoogleId(profile.sub);
   if (existing) return existing;
+  logger.info('Creating new user from Google profile', { googleId: profile.sub, email: profile.email });
   return saveUser({ googleId: profile.sub, email: profile.email, displayName: profile.name ?? profile.email, avatarUrl: profile.picture ?? null });
 };
 export const createSessionToken = (user: User): string => jwt.sign({ sub: user.id, email: user.email }, env.jwtSecret, { expiresIn: '7d' });

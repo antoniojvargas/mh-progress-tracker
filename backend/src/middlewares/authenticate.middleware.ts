@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
+import { UnauthorizedError } from '../errors/http-error';
 import { findUserById } from '../repositories/user.repository';
 
 export const authenticate = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
@@ -11,13 +12,12 @@ export const authenticate = async (request: Request, response: Response, next: N
     const user = await findUserById(payload.sub);
     if (!user) {
       logger.warn('Session references unknown user', { userId: payload.sub });
-      response.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' } });
-      return;
+      throw new UnauthorizedError();
     }
     request.user = user;
     next();
   } catch (error) {
-    logger.warn('Rejected request with invalid session', { path: request.originalUrl, error });
-    response.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' } });
+    if (!(error instanceof UnauthorizedError)) logger.warn('Rejected request with invalid session', { path: request.originalUrl, error });
+    next(error instanceof UnauthorizedError ? error : new UnauthorizedError());
   }
 };

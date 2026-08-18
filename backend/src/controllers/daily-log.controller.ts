@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { logger } from '../config/logger';
+import { BadRequestError, ConflictError } from '../errors/http-error';
+import { asyncHandler } from '../middlewares/async-handler';
 import { io } from '../websocket/socket.gateway';
 import { createDailyLog, getDailyLogs } from '../services/daily-log.service';
 import { dailyLogSchema, logsQuerySchema } from '../validators/daily-log.schema';
@@ -12,12 +14,11 @@ const serializeLog = (log: Awaited<ReturnType<typeof createDailyLog>>) => ({
   depressionSeverity: log.depressionSeverity, anxietySymptomsPresent: log.anxietySymptomsPresent,
   anxietySymptomSeverity: log.anxietySymptomSeverity, notes: log.notes
 });
-export const postDailyLog = async (request: Request, response: Response): Promise<void> => {
+export const postDailyLog = asyncHandler(async (request: Request, response: Response): Promise<void> => {
   const parsed = dailyLogSchema.safeParse(request.body);
   if (!parsed.success) {
     logger.warn('Rejected invalid daily log payload', { userId: request.user!.id, issues: parsed.error.flatten() });
-    response.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid daily log data.', details: parsed.error.flatten() } });
-    return;
+    throw new BadRequestError('Invalid daily log data.', parsed.error.flatten());
   }
   try {
     const log = await createDailyLog(request.user!.id, parsed.data);
@@ -28,19 +29,17 @@ export const postDailyLog = async (request: Request, response: Response): Promis
   } catch (error) {
     if ((error as { code?: string }).code === '23505') {
       logger.warn('Rejected duplicate daily log', { userId: request.user!.id, logDate: parsed.data.logDate });
-      response.status(409).json({ error: { code: 'DAILY_LOG_ALREADY_EXISTS', message: 'A log already exists for this day.' } });
-      return;
+      throw new ConflictError('A log already exists for this day.', 'DAILY_LOG_ALREADY_EXISTS');
     }
     throw error;
   }
-};
-export const listDailyLogs = async (request: Request, response: Response): Promise<void> => {
+});
+export const listDailyLogs = asyncHandler(async (request: Request, response: Response): Promise<void> => {
   const parsed = logsQuerySchema.safeParse(request.query);
   if (!parsed.success) {
     logger.warn('Rejected invalid daily log query', { userId: request.user!.id, query: request.query });
-    response.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Provide valid from and to dates.' } });
-    return;
+    throw new BadRequestError('Provide valid from and to dates.');
   }
   const logs = await getDailyLogs(request.user!.id, parsed.data.from, parsed.data.to);
   response.json({ data: logs.map(serializeLog), meta: parsed.data });
-};
+});
